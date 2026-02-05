@@ -57,20 +57,34 @@ const createTask = async (req, res) => {
 const getTasks = async (req, res) => {
   try {
     const { keyword, projectId } = req.query;
+    const userId = req.user.id;
 
-    // بناء كائن البحث
-    let query = { projectId: projectId }; // يجب تمرير projectId
+    let query = {};
 
+    // ✅ التعديل الجديد: التعامل مع الحالة "عرض الكل"
+    if (projectId) {
+      // إذا تم تحديد مشروع، ابحث فيه فقط
+      query.projectId = projectId;
+    } else {
+      // إذا لم يتم تحديد مشروع، اجلب جميع معرفات المشاريع التي يملكها المستخدم
+      const userProjects = await Project.find({ createdBy: userId }).select('_id');
+      const projectIds = userProjects.map(p => p._id);
+      
+      // ابحث عن المهام التي تقع ضمن أي من هذه المشاريع
+      query.projectId = { $in: projectIds };
+    }
+
+    // إضافة شرط البحث
     if (keyword) {
       query.$or = [
-        { title: { $regex: keyword, $options: "i" } },
-        { description: { $regex: keyword, $options: "i" } },
+        { title: { $regex: keyword, $options: 'i' } },
+        { description: { $regex: keyword, $options: 'i' } },
       ];
     }
 
-    // جلب المهام مع تعبئة بيانات المستخدم المعين (assignedTo)
+    // جلب المهام مع تعبئة بيانات المستخدم
     const tasks = await Task.find(query)
-      .populate("assignedTo", "name email") 
+      .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, count: tasks.length, data: tasks });
