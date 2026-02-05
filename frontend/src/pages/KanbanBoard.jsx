@@ -1,19 +1,30 @@
 // src/pages/KanbanBoard.jsx
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { FaPlus, FaTrash, FaUser, FaTimes, FaEdit } from "react-icons/fa";
+import {
+  FaPlus,
+  FaTrash,
+  FaUser,
+  FaTimes,
+  FaEdit,
+  FaProjectDiagram,
+} from "react-icons/fa";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 
 const KanbanBoard = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const searchParams = new URLSearchParams(location.search);
-  const projectId = searchParams.get("projectId");
+
+  // ✅ State لإدارة المشروع المحدد (بدلاً من الاعتماد على الرابط فقط)
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [allProjects, setAllProjects] = useState([]); // لملء القائمة المنسدلة
 
   const [tasks, setTasks] = useState([]);
   const [projectTitle, setProjectTitle] = useState("");
@@ -21,29 +32,44 @@ const KanbanBoard = () => {
 
   // حالة النافذة المنبثقة
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // حالة البيانات (للإضافة أو التعديل)
   const [taskFormData, setTaskFormData] = useState({
     title: "",
     description: "",
     priority: "Medium",
     dueDate: "",
   });
-
-  // لتتبع ما إذا كنا نعدل مهمة أم نضيف جديدة
   const [editingId, setEditingId] = useState(null);
 
-  const fetchTasks = async () => {
-    if (!projectId) return;
+  // 1. جلب جميع مشاريع المستخدم (للقائمة المنسدلة)
+  const fetchProjects = async () => {
+    try {
+      const { data } = await api.get("/projects");
+      setAllProjects(data.data);
+    } catch (error) {
+      console.error("Error fetching projects list", error);
+    }
+  };
+
+  // 2. جلب المهام بناءً على المشروع المحدد
+  const fetchTasks = async (projectIdParam = null) => {
     try {
       setLoading(true);
-      const [tasksRes, projectRes] = await Promise.all([
-        api.get(`/tasks?projectId=${projectId}`),
-        api.get(`/projects/${projectId}`),
-      ]);
+      // إذا تم تمرير projectId، استخدمه، وإلا استخدم الحالة الحالية
+      const idToFetch = projectIdParam || selectedProjectId;
 
+      // بناء الطلب
+      const url = idToFetch ? `/tasks?projectId=${idToFetch}` : "/tasks";
+
+      const tasksRes = await api.get(url);
       setTasks(tasksRes.data.data);
-      setProjectTitle(projectRes.data.data.title);
+
+      // تحديث عنوان المشروع (للعرض فقط)
+      if (idToFetch) {
+        const currentProject = allProjects.find((p) => p._id === idToFetch);
+        setProjectTitle(currentProject ? currentProject.title : "");
+      } else {
+        setProjectTitle(t("tasks.title")); // عنوان عام
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -52,8 +78,25 @@ const KanbanBoard = () => {
   };
 
   useEffect(() => {
-    fetchTasks();
-  }, [projectId]);
+    // 1. جلب قائمة المشاريع
+    fetchProjects();
+
+    // 2. التحقق من الرابط (إذا جاء المستخدم من صفحة المشاريع)
+    const urlProjectId = searchParams.get("projectId");
+    if (urlProjectId) {
+      setSelectedProjectId(urlProjectId);
+    } else {
+      // الوضع الافتراضي: العرض الكامل (قيمة فارغة تعني "الكل")
+      setSelectedProjectId("");
+    }
+  }, []); // يحدث مرة واحدة عند التحميل
+
+  // 3. مراقبة تغيير المشروع المحدد لجلب المهام (يحل مشكلة التنقل)
+  useEffect(() => {
+    if (allProjects.length > 0) {
+      fetchTasks();
+    }
+  }, [selectedProjectId, allProjects]); // يعيد التحميل عند تغيير المشروع
 
   const columns = {
     todo: tasks.filter((t) => t.status === "To Do"),
@@ -63,14 +106,12 @@ const KanbanBoard = () => {
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
-
     if (
       !destination ||
       (destination.droppableId === source.droppableId &&
         destination.index === source.index)
-    ) {
+    )
       return;
-    }
 
     let newStatus = "";
     if (destination.droppableId === "todo") newStatus = "To Do";
@@ -79,9 +120,7 @@ const KanbanBoard = () => {
     else if (destination.droppableId === "done") newStatus = "Done";
 
     const updatedTasks = tasks.map((task) => {
-      if (task._id === draggableId) {
-        return { ...task, status: newStatus };
-      }
+      if (task._id === draggableId) return { ...task, status: newStatus };
       return task;
     });
     setTasks(updatedTasks);
@@ -94,10 +133,8 @@ const KanbanBoard = () => {
     }
   };
 
-  // فتح النافذة (للإضافة أو التعديل)
   const openModal = (task = null) => {
     if (task) {
-      // وضع التعديل
       setTaskFormData({
         title: task.title,
         description: task.description || "",
@@ -106,7 +143,6 @@ const KanbanBoard = () => {
       });
       setEditingId(task._id);
     } else {
-      // وضع الإضافة
       setTaskFormData({
         title: "",
         description: "",
@@ -121,48 +157,41 @@ const KanbanBoard = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
-    setTaskFormData({
-      title: "",
-      description: "",
-      priority: "Medium",
-      dueDate: "",
-    });
   };
 
-  // حفظ المهمة (إضافة أو تعديل)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!taskFormData.title.trim()) return;
+    // التأكد من وجود مشروع محدد للإضافة
+    if (!selectedProjectId) {
+      alert("Please select a project first!");
+      return;
+    }
 
     try {
       if (editingId) {
-        // ✅ تحديث المهمة
         await api.put(`/tasks/${editingId}`, {
           title: taskFormData.title,
           description: taskFormData.description,
           priority: taskFormData.priority,
           dueDate: taskFormData.dueDate,
-          // لا نرسل status أو assignedTo لعدم تغييرها بالخطأ
         });
         alert("Task Updated Successfully!");
       } else {
-        // ✅ إضافة مهمة جديدة
         await api.post("/tasks", {
           title: taskFormData.title,
           description: taskFormData.description,
           priority: taskFormData.priority,
           dueDate: taskFormData.dueDate,
-          projectId,
+          projectId: selectedProjectId,
           status: "To Do",
-          // الـ Backend سيتكفل بتعيينها للمستخدم
+          assignedTo: user?._id,
         });
         alert("Task Created Successfully!");
       }
-
       closeModal();
       fetchTasks();
     } catch (error) {
-      console.error("Error:", error);
       alert("Operation Failed");
     }
   };
@@ -174,12 +203,6 @@ const KanbanBoard = () => {
     }
   };
 
-  if (!projectId) {
-    return (
-      <div className="p-10 text-center text-red-500">Error: No Project ID.</div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -188,13 +211,30 @@ const KanbanBoard = () => {
           <p className="text-sm text-gray-500">{t("tasks.title")}</p>
         </div>
 
-        <button
-          onClick={() => openModal()}
-          className="flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
-        >
-          <FaPlus />
-          <span>{t("tasks.addTask")}</span>
-        </button>
+        {/* ✅ القائمة المنسدلة لاختيار المشروع */}
+        <div className="flex gap-3">
+          <select
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm"
+          >
+            <option value="">{t("common.viewAll") || "All Projects"}</option>
+            {allProjects.map((proj) => (
+              <option key={proj._id} value={proj._id}>
+                {proj.title}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => openModal()}
+            disabled={!selectedProjectId}
+            className="flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+          >
+            <FaPlus />
+            <span>{t("tasks.addTask")}</span>
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -236,7 +276,7 @@ const KanbanBoard = () => {
         </DragDropContext>
       )}
 
-      {/* Modal */}
+      {/* Modal (نفس الكود السابق) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
@@ -251,8 +291,8 @@ const KanbanBoard = () => {
                 <FaTimes size={20} />
               </button>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Inputs... */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Title
@@ -267,7 +307,6 @@ const KanbanBoard = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
@@ -282,9 +321,8 @@ const KanbanBoard = () => {
                   }
                   rows="3"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                ></textarea>
+                />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -305,7 +343,6 @@ const KanbanBoard = () => {
                     <option value="High">High</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Due Date
@@ -323,7 +360,6 @@ const KanbanBoard = () => {
                   />
                 </div>
               </div>
-
               <div className="pt-4">
                 <button
                   type="submit"
@@ -340,7 +376,7 @@ const KanbanBoard = () => {
   );
 };
 
-// تحديث مكون العمود لاستقبال handleEdit وإضافة زر التعديل
+// (باقي كود المكون Column كما هو في المرة السابقة)
 const Column = ({
   id,
   title,
@@ -360,7 +396,6 @@ const Column = ({
         {tasks.length}
       </span>
     </h3>
-
     <Droppable droppableId={id} direction="vertical" isDropDisabled={false}>
       {(provided) => (
         <div
@@ -390,7 +425,6 @@ const Column = ({
                     >
                       {t(`tasks.${task.priority.toLowerCase()}`)}
                     </span>
-                    {/* أزرار التحكم تظهر عند التحويم */}
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleEdit(task)}
@@ -406,7 +440,6 @@ const Column = ({
                       </button>
                     </div>
                   </div>
-
                   <p className="font-semibold text-gray-800 text-sm mb-2">
                     {task.title}
                   </p>
@@ -415,7 +448,6 @@ const Column = ({
                       {task.description}
                     </p>
                   )}
-
                   <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
                     <div className="flex items-center gap-1">
                       <FaUser size={10} />
