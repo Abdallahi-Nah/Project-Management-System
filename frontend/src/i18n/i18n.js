@@ -34,6 +34,7 @@ const resources = {
         sidebarTitle: "Project Manager",
       },
       common: {
+        viewAll: "View All",
         create: "Create",
         edit: "Edit",
         delete: "Delete",
@@ -131,6 +132,7 @@ const resources = {
         sidebarTitle: "مدير المشاريع",
       },
       common: {
+        viewAll: "عرض الكل",
         create: "إنشاء",
         edit: "تعديل",
         delete: "حذف",
@@ -228,6 +230,7 @@ const resources = {
         sidebarTitle: "Gestionnaire de Projet",
       },
       common: {
+        viewAll: "Voir Tout",
         create: "Créer",
         edit: "Modifier",
         delete: "Supprimer",
