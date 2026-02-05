@@ -276,7 +276,7 @@ const KanbanBoard = () => {
         </DragDropContext>
       )}
 
-      {/* 🆕 النافذة المنبثقة (Modal) مع دعم الترجمة */}
+      {/* Modal (نفس الكود السابق) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
@@ -293,8 +293,8 @@ const KanbanBoard = () => {
                 <FaTimes size={20} />
               </button>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Inputs... */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t("taskModal.titleLabel")}
@@ -309,7 +309,6 @@ const KanbanBoard = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t("taskModal.descriptionLabel")}
@@ -324,9 +323,8 @@ const KanbanBoard = () => {
                   }
                   rows="3"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                ></textarea>
+                />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -347,7 +345,6 @@ const KanbanBoard = () => {
                     <option value="High">{t("taskModal.high")}</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {t("taskModal.dueDateLabel")}
@@ -365,7 +362,6 @@ const KanbanBoard = () => {
                   />
                 </div>
               </div>
-
               <div className="pt-4">
                 <button
                   type="submit"
