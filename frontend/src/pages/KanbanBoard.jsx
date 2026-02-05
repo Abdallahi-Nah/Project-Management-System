@@ -276,13 +276,15 @@ const KanbanBoard = () => {
         </DragDropContext>
       )}
 
-      {/* Modal (نفس الكود السابق) */}
+      {/* 🆕 النافذة المنبثقة (Modal) مع دعم الترجمة */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800">
-                {editingId ? "Update Task" : "Add New Task"}
+                {editingId
+                  ? t("taskModal.updateTask")
+                  : t("taskModal.addNewTask")}
               </h3>
               <button
                 onClick={closeModal}
@@ -291,11 +293,11 @@ const KanbanBoard = () => {
                 <FaTimes size={20} />
               </button>
             </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Inputs... */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title
+                  {t("taskModal.titleLabel")}
                 </label>
                 <input
                   type="text"
@@ -307,9 +309,10 @@ const KanbanBoard = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
+                  {t("taskModal.descriptionLabel")}
                 </label>
                 <textarea
                   value={taskFormData.description}
@@ -321,12 +324,13 @@ const KanbanBoard = () => {
                   }
                   rows="3"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                />
+                ></textarea>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Priority
+                    {t("taskModal.priorityLabel")}
                   </label>
                   <select
                     value={taskFormData.priority}
@@ -338,14 +342,15 @@ const KanbanBoard = () => {
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
+                    <option value="Low">{t("taskModal.low")}</option>
+                    <option value="Medium">{t("taskModal.medium")}</option>
+                    <option value="High">{t("taskModal.high")}</option>
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Due Date
+                    {t("taskModal.dueDateLabel")}
                   </label>
                   <input
                     type="date"
@@ -360,12 +365,15 @@ const KanbanBoard = () => {
                   />
                 </div>
               </div>
+
               <div className="pt-4">
                 <button
                   type="submit"
                   className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-md"
                 >
-                  {editingId ? "Update Task" : "Create Task"}
+                  {editingId
+                    ? t("taskModal.updateBtn")
+                    : t("taskModal.createBtn")}
                 </button>
               </div>
             </form>
