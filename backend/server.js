@@ -24,7 +24,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
-      "https://project-management-system-onyc.vercel.app/",
+      "https://project-management-system-onyc.vercel.app",
       "http://localhost:3000",
       "http://localhost:5173",
     ],
